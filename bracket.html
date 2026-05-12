@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Tournament Bracket</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>  Mini Tournament</h1>
+            
+        </div>
+
+        <div class="bracket-container">
+            <div class="round">
+                <div class="round-title">Finals</div>
+                <div class="match">
+                    <div class="match-title">Finals Match</div>
+                    <div class="team" id="team1">
+                        <span class="team-name" id="team1Name">Team 1</span>
+                        <span class="team-score" id="team1Score">0</span>
+                    </div>
+                    <div class="vs-text">VS</div>
+                    <div class="team" id="team2">
+                        <span class="team-name" id="team2Name">Team 2</span>
+                        <span class="team-score" id="team2Score">0</span>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="newTeam1" placeholder="Team 1 name">
+                        <button onclick="updateTeam1Name()">Update</button>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="newTeam2" placeholder="Team 2 name">
+                        <button onclick="updateTeam2Name()">Update</button>
+                    </div>
+                    <div class="input-group">
+                        <input type="number" id="score1" placeholder="Score" min="0" max="100">
+                        <input type="number" id="score2" placeholder="Score" min="0" max="100">
+                        <button onclick="updateScores()">Set Scores</button>
+                    </div>
+                </div>
+
+                <div class="round" style="gap: 20px; margin-top: 30px;">
+                    <div class="round-title">Champion</div>
+                    <div class="match" style="border-color: #00ff00; background: rgba(0, 255, 0, 0.1);">
+                        <div class="match-title" style="color: #00ff00;">🏆 Tournament Winner</div>
+                        <div class="team" style="justify-content: center; border: none;">
+                            <span class="winner" id="winnerText" style="font-size: 1.2em;">TBD</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="reset-btn" onclick="resetBracket()">Reset Tournament</button>
+    </div>
+
+    <script>
+        function updateTeam1Name() {
+            const newName = document.getElementById('newTeam1').value;
+            if (newName.trim()) {
+                document.getElementById('team1Name').textContent = newName;
+                document.getElementById('newTeam1').value = '';
+            }
+        }
+
+        function updateTeam2Name() {
+            const newName = document.getElementById('newTeam2').value;
+            if (newName.trim()) {
+                document.getElementById('team2Name').textContent = newName;
+                document.getElementById('newTeam2').value = '';
+            }
+        }
+
+        function updateScores() {
+            const score1 = document.getElementById('score1').value;
+            const score2 = document.getElementById('score2').value;
+
+            if (score1 !== '' && score2 !== '') {
+                document.getElementById('team1Score').textContent = score1;
+                document.getElementById('team2Score').textContent = score2;
+
+                // Determine and display winner
+                if (parseInt(score1) > parseInt(score2)) {
+                    document.getElementById('winnerText').textContent = document.getElementById('team1Name').textContent + ' WINS!';
+                    document.getElementById('team1').style.color = '#00ff00';
+                    document.getElementById('team2').style.color = '#e0e0e0';
+                } else if (parseInt(score2) > parseInt(score1)) {
+                    document.getElementById('winnerText').textContent = document.getElementById('team2Name').textContent + ' WINS!';
+                    document.getElementById('team2').style.color = '#00ff00';
+                    document.getElementById('team1').style.color = '#e0e0e0';
+                } else {
+                    document.getElementById('winnerText').textContent = 'TIED';
+                    document.getElementById('team1').style.color = '#0af';
+                    document.getElementById('team2').style.color = '#0af';
+                }
+
+                document.getElementById('score1').value = '';
+                document.getElementById('score2').value = '';
+            }
+        }
+
+        function resetBracket() {
+            document.getElementById('team1Name').textContent = 'Team 1';
+            document.getElementById('team2Name').textContent = 'Team 2';
+            document.getElementById('team1Score').textContent = '0';
+            document.getElementById('team2Score').textContent = '0';
+            document.getElementById('newTeam1').value = '';
+            document.getElementById('newTeam2').value = '';
+            document.getElementById('score1').value = '';
+            document.getElementById('score2').value = '';
+            document.getElementById('winnerText').textContent = 'TBD';
+            document.getElementById('team1').style.color = '#e0e0e0';
+            document.getElementById('team2').style.color = '#e0e0e0';
+        }
+
+        // Allow Enter key to update
+        document.getElementById('newTeam1').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') updateTeam1Name();
+        });
+
+        document.getElementById('newTeam2').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') updateTeam2Name();
+        });
+    </script>
+</body>
+</html>
