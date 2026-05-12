@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 
 function App() {
   const [mode, setMode] = useState('landing')
   const [adminPassword, setAdminPassword] = useState('')
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
 
   const initialMatchTeams = [
     {
@@ -181,11 +182,25 @@ function App() {
 
   const handleBackToSelection = () => {
     setMode('landing')
+    setIsAdminAuthenticated(false)
     setAdminPassword('')
   }
 
+  const handleLogout = () => {
+    setIsAdminAuthenticated(false)
+    setMode('landing')
+    setAdminPassword('')
+  }
+
+  useEffect(() => {
+    if (mode === 'admin' && !isAdminAuthenticated) {
+      setMode('admin-login')
+    }
+  }, [mode, isAdminAuthenticated])
+
   const handleAdminLogin = () => {
     if (adminPassword === ADMIN_PASSWORD) {
+      setIsAdminAuthenticated(true)
       setMode('admin')
       setAdminPassword('')
     } else {
@@ -268,8 +283,8 @@ function App() {
       {mode === 'landing' && (
         <div className="landing-page">
           <div className="landing-card">
-            <h1>Welcome to the Tournament</h1>
-            <p>Choose your role to continue.</p>
+            <h1>Welcome to chillpinguuu's Mini Tournament</h1>
+            <p>Choose to continue.</p>
             <div className="landing-actions">
               <button className="mode-btn" onClick={handleChooseRules}>Tournament Rules</button>
               <button className="mode-btn" onClick={handleChooseAdmin}>Admin Panel</button>
@@ -339,8 +354,13 @@ function App() {
                 Summoner's Rift Match
               </button>
               <button className="secondary-btn landing-return" onClick={handleBackToSelection}>
-                Change role
+                Exit
               </button>
+              {mode === 'admin' && (
+                <button className="secondary-btn landing-return" onClick={handleLogout}>
+                  Logout
+                </button>
+              )}
             </div>
           </div>
 
