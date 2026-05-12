@@ -94,8 +94,8 @@ const initializeDatabase = async () => {
     }
 
     await db.execute(
-      'INSERT INTO matches (round, team1_id, team2_id, winner_id) VALUES (?, ?, ?, ?)',
-      ['finals', 1, 2, null]
+      'INSERT INTO matches (round, team1_id, team2_id, winner_id) VALUES (?, ?, ?, ?), (?, ?, ?, ?)',
+      ['aram', 1, 2, null, 'summonersRift', 1, 2, null]
     )
   }
 }

@@ -2,13 +2,10 @@ import { useState } from 'react'
 import './App.css'
 
 function App() {
-  const [isAdmin, setIsAdmin] = useState(true)
+  const [mode, setMode] = useState('landing')
   const [adminPassword, setAdminPassword] = useState('')
-  const [isAuthenticated, setIsAuthenticated] = useState(true)
-  const [showPasswordInput, setShowPasswordInput] = useState(false)
 
-  // Initialize 2 teams with 5 players each
-  const [teams, setTeams] = useState([
+  const initialMatchTeams = [
     {
       id: 1,
       name: 'Team 1',
@@ -33,7 +30,17 @@ function App() {
         assists: 0
       }))
     }
-  ])
+  ]
+
+  const [matchTeams, setMatchTeams] = useState({
+    aram: initialMatchTeams,
+    summonersRift: initialMatchTeams.map(team => ({
+      ...team,
+      players: team.players.map(player => ({ ...player }))
+    }))
+  })
+  const [selectedMatch, setSelectedMatch] = useState('aram')
+  const currentTeams = matchTeams[selectedMatch]
 
   const [selectedTeam, setSelectedTeam] = useState(0)
   const [newTeamName, setNewTeamName] = useState('')
@@ -42,89 +49,145 @@ function App() {
   const [selectedPlayer, setSelectedPlayer] = useState(0)
   const [playerStats, setPlayerStats] = useState({ kills: '', deaths: '', assists: '' })
   const [matchResults, setMatchResults] = useState({
-    finals: { team1: 0, team2: 1, winner: null }
+    aram: { team1: 0, team2: 1, winner: null },
+    summonersRift: { team1: 0, team2: 1, winner: null }
   })
 
   const ADMIN_PASSWORD = 'admin123'
 
   const updateTeamName = () => {
     if (newTeamName.trim() && selectedTeam >= 0) {
-      const updatedTeams = [...teams]
-      updatedTeams[selectedTeam].name = newTeamName
-      setTeams(updatedTeams)
+      const updatedMatchTeams = { ...matchTeams }
+      const updatedTeams = [...updatedMatchTeams[selectedMatch]]
+      updatedTeams[selectedTeam] = {
+        ...updatedTeams[selectedTeam],
+        name: newTeamName
+      }
+      updatedMatchTeams[selectedMatch] = updatedTeams
+      setMatchTeams(updatedMatchTeams)
       setNewTeamName('')
     }
   }
 
   const updateTeamWins = () => {
     if (selectedTeam >= 0) {
-      const updatedTeams = [...teams]
-      updatedTeams[selectedTeam].wins = parseInt(newTeamWins, 10) || 0
-      setTeams(updatedTeams)
+      const updatedMatchTeams = { ...matchTeams }
+      const updatedTeams = [...updatedMatchTeams[selectedMatch]]
+      updatedTeams[selectedTeam] = {
+        ...updatedTeams[selectedTeam],
+        wins: parseInt(newTeamWins, 10) || 0
+      }
+      updatedMatchTeams[selectedMatch] = updatedTeams
+      setMatchTeams(updatedMatchTeams)
       setNewTeamWins('')
     }
   }
 
   const updatePlayerName = () => {
     if (newPlayerName.trim() && selectedTeam >= 0 && selectedPlayer >= 0) {
-      const updatedTeams = [...teams]
-      updatedTeams[selectedTeam].players[selectedPlayer].name = newPlayerName
-      setTeams(updatedTeams)
+      const updatedMatchTeams = { ...matchTeams }
+      const updatedTeams = [...updatedMatchTeams[selectedMatch]]
+      const updatedPlayers = [...updatedTeams[selectedTeam].players]
+      updatedPlayers[selectedPlayer] = {
+        ...updatedPlayers[selectedPlayer],
+        name: newPlayerName
+      }
+      updatedTeams[selectedTeam] = {
+        ...updatedTeams[selectedTeam],
+        players: updatedPlayers
+      }
+      updatedMatchTeams[selectedMatch] = updatedTeams
+      setMatchTeams(updatedMatchTeams)
       setNewPlayerName('')
     }
   }
 
   const updatePlayerStats = () => {
     if (selectedTeam >= 0 && selectedPlayer >= 0) {
-      const updatedTeams = [...teams]
-      const player = updatedTeams[selectedTeam].players[selectedPlayer]
-      player.kills = parseInt(playerStats.kills) || 0
-      player.deaths = parseInt(playerStats.deaths) || 0
-      player.assists = parseInt(playerStats.assists) || 0
-      setTeams(updatedTeams)
+      const updatedMatchTeams = { ...matchTeams }
+      const updatedTeams = [...updatedMatchTeams[selectedMatch]]
+      const updatedPlayers = [...updatedTeams[selectedTeam].players]
+      updatedPlayers[selectedPlayer] = {
+        ...updatedPlayers[selectedPlayer],
+        kills: parseInt(playerStats.kills) || 0,
+        deaths: parseInt(playerStats.deaths) || 0,
+        assists: parseInt(playerStats.assists) || 0
+      }
+      updatedTeams[selectedTeam] = {
+        ...updatedTeams[selectedTeam],
+        players: updatedPlayers
+      }
+      updatedMatchTeams[selectedMatch] = updatedTeams
+      setMatchTeams(updatedMatchTeams)
       setPlayerStats({ kills: '', deaths: '', assists: '' })
     }
   }
 
-  const updateMatchResult = (round, matchIndex, winnerIndex) => {
+  const [confirmModal, setConfirmModal] = useState({
+    open: false,
+    round: null,
+    winnerIndex: null,
+    teamName: ''
+  })
+
+  const updateMatchResult = (round, winnerIndex) => {
     const updatedResults = { ...matchResults }
-    if (round === 'finals') {
-      updatedResults.finals.winner = winnerIndex
+    if (updatedResults[round]) {
+      updatedResults[round] = {
+        ...updatedResults[round],
+        winner: winnerIndex
+      }
     }
     setMatchResults(updatedResults)
+    setConfirmModal({ open: false, round: null, winnerIndex: null, teamName: '' })
+  }
+
+  const openConfirmModal = (round, winnerIndex, teamName) => {
+    setConfirmModal({ open: true, round, winnerIndex, teamName })
+  }
+
+  const closeConfirmModal = () => {
+    setConfirmModal({ open: false, round: null, winnerIndex: null, teamName: '' })
   }
 
   const resetTournament = () => {
-    setTeams(teams.map(team => ({
-      ...team,
-      wins: 0,
-      players: team.players.map(player => ({
-        ...player,
-        kills: 0,
-        deaths: 0,
-        assists: 0
+    setMatchTeams({
+      aram: initialMatchTeams,
+      summonersRift: initialMatchTeams.map(team => ({
+        ...team,
+        players: team.players.map(player => ({ ...player }))
       }))
-    })))
+    })
     setMatchResults({
-      finals: { team1: 0, team2: 1, winner: null }
+      aram: { team1: 0, team2: 1, winner: null },
+      summonersRift: { team1: 0, team2: 1, winner: null }
     })
   }
 
-  const handleSwitchMode = () => {
-    if (!isAdmin) {
-      setShowPasswordInput(true)
-    } else {
-      setIsAdmin(false)
-      setIsAuthenticated(false)
-    }
+  const handleChooseRules = () => {
+    setMode('rules')
+    setAdminPassword('')
+  }
+
+  const handleChooseAdmin = () => {
+    setMode('admin-login')
+    setAdminPassword('')
+  }
+
+  const handleChooseViewer = () => {
+    setMode('viewer')
+    setAdminPassword('')
+  }
+
+  const handleBackToSelection = () => {
+    setMode('landing')
+    setAdminPassword('')
   }
 
   const handleAdminLogin = () => {
     if (adminPassword === ADMIN_PASSWORD) {
-      setIsAdmin(true)
-      setIsAuthenticated(true)
+      setMode('admin')
       setAdminPassword('')
-      setShowPasswordInput(false)
     } else {
       alert('Incorrect password!')
       setAdminPassword('')
@@ -161,10 +224,11 @@ function App() {
     )
   }
 
-  const MatchCard = ({ match, round, matchIndex, title }) => {
-    const team1 = teams[match.team1]
-    const team2 = teams[match.team2]
-    const winner = match.winner !== null ? teams[match.winner] : null
+  const MatchCard = ({ match, title, round, mode, onSelectWinner }) => {
+    const currentMatchTeams = matchTeams[round] || []
+    const team1 = currentMatchTeams[match.team1]
+    const team2 = currentMatchTeams[match.team2]
+    const winner = match.winner !== null ? currentMatchTeams[match.winner] : null
 
     return (
       <div className="match">
@@ -178,147 +242,246 @@ function App() {
             <span className="team-name">{team2 ? team2.name : 'TBD'}</span>
           </div>
         </div>
+        <div className="match-actions">
+          <button
+            onClick={() => onSelectWinner(round, match.team1, team1?.name || 'Team 1')}
+            disabled={mode !== 'admin'}
+          >
+            {team1 ? `${team1.name} Wins` : 'Team 1 Wins'}
+          </button>
+          <button
+            onClick={() => onSelectWinner(round, match.team2, team2?.name || 'Team 2')}
+            disabled={mode !== 'admin'}
+          >
+            {team2 ? `${team2.name} Wins` : 'Team 2 Wins'}
+          </button>
+        </div>
+        <div className="match-winner">
+          {winner ? `Winner: ${winner.name}` : 'Winner: TBD'}
+        </div>
       </div>
     )
   }
 
   return (
     <div className="container">
-      <div className="mode-switcher">
-        <button
-          className={`mode-btn ${isAdmin ? 'active' : ''}`}
-          onClick={() => setIsAdmin(true)}
-          disabled={!isAdmin && !isAuthenticated}
-        >
-          Admin Panel
-        </button>
-        <button
-          className={`mode-btn ${!isAdmin ? 'active' : ''}`}
-          onClick={() => setIsAdmin(false)}
-        >
-          Audience View
-        </button>
-      </div>
-
-      {isAdmin && (
-        <div className="header">
-          <h1>⚔️ League of Legends Tournament - ADMIN</h1>
-          <p>2-Team Championship Bracket - Admin Control Panel</p>
-        </div>
-      )}
-
-      {!isAdmin && (
-        <div className="header">
-          <h1>⚔️ League of Legends Tournament</h1>
-          <p>2-Team Championship Bracket</p>
-        </div>
-      )}
-
-      <div className="tournament-content">
-        <div className="teams-section">
-          <h2>Teams & Players</h2>
-          <div className="teams-grid">
-            {teams.map((team, index) => (
-              <TeamCard key={team.id} team={team} index={index} />
-            ))}
+      {mode === 'landing' && (
+        <div className="landing-page">
+          <div className="landing-card">
+            <h1>Welcome to the Tournament</h1>
+            <p>Choose your role to continue.</p>
+            <div className="landing-actions">
+              <button className="mode-btn" onClick={handleChooseRules}>Tournament Rules</button>
+              <button className="mode-btn" onClick={handleChooseAdmin}>Admin Panel</button>
+              <button className="mode-btn" onClick={handleChooseViewer}>Viewer Panel</button>
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="bracket-section">
-          <h2>Tournament Bracket</h2>
-          <div className="bracket-container">
-            <div className="round">
-              <div className="round-title">Finals</div>
-              <MatchCard
-                match={matchResults.finals}
-                round="finals"
-                matchIndex={0}
-                title="Championship Match"
+      {mode === 'rules' && (
+        <div className="landing-page">
+          <div className="landing-card auth-card">
+            <h1>Tournament Rules</h1>
+            <p>
+              Welcome to the tournament. Here are the main guidelines:
+            </p>
+            <ul className="rules-list">
+              <li>Each team has 5 players.</li>
+              <li>Wins and player stats are updated by admin only.</li>
+              <li>Viewers can watch the bracket and team details but cannot edit anything.</li>
+              <li>The final winner is decided by the admin selection.</li>
+            </ul>
+            <button className="secondary-btn" onClick={handleBackToSelection}>Back to selection</button>
+          </div>
+        </div>
+      )}
+
+      {mode === 'admin-login' && (
+        <div className="landing-page">
+          <div className="landing-card auth-card">
+            <h1>Admin Login</h1>
+            <p>Enter the password to access the admin panel.</p>
+            <div className="input-group">
+              <input
+                type="password"
+                placeholder="Admin password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
               />
+              <button onClick={handleAdminLogin}>Login</button>
             </div>
+            <button className="secondary-btn" onClick={handleBackToSelection}>Back to selection</button>
           </div>
         </div>
+      )}
 
-        {isAdmin && (
-          <div className="admin-controls">
-            <div className="control-section">
-              <h3>Edit Team Names</h3>
-              <select value={selectedTeam} onChange={(e) => setSelectedTeam(parseInt(e.target.value))}>
-                {teams.map((team, index) => (
-                  <option key={team.id} value={index}>{team.name}</option>
-                ))}
-              </select>
-              <div className="input-group">
-                <input
-                  type="text"
-                  placeholder="New team name"
-                  value={newTeamName}
-                  onChange={(e) => setNewTeamName(e.target.value)}
-                />
-                <button onClick={updateTeamName}>Update Team</button>
-              </div>
-              <div className="input-group">
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Team wins"
-                  value={newTeamWins}
-                  onChange={(e) => setNewTeamWins(e.target.value)}
-                />
-                <button onClick={updateTeamWins}>Update Wins</button>
-              </div>
+      {(mode === 'admin' || mode === 'viewer') && (
+        <>
+          <div className="header">
+            <h1>{mode === 'admin' ? 'Admin Panel' : 'Audience Panel'}</h1>
+            <p>
+              {mode === 'admin'
+                ? 'Manage teams, players, and match details.'
+                : 'View teams, players, and the tournament bracket.'}
+            </p>
+            <div className="header-actions">
+              <button
+                className={`secondary-btn landing-return ${selectedMatch === 'aram' ? 'active' : ''}`}
+                onClick={() => setSelectedMatch('aram')}
+              >
+                ARAM Match
+              </button>
+              <button
+                className={`secondary-btn landing-return ${selectedMatch === 'summonersRift' ? 'active' : ''}`}
+                onClick={() => setSelectedMatch('summonersRift')}
+              >
+                Summoner's Rift Match
+              </button>
+              <button className="secondary-btn landing-return" onClick={handleBackToSelection}>
+                Change role
+              </button>
             </div>
-
-            <div className="control-section">
-              <h3>Edit Player Stats</h3>
-              <div className="player-controls">
-                <select value={selectedTeam} onChange={(e) => setSelectedTeam(parseInt(e.target.value))}>
-                  {teams.map((team, index) => (
-                    <option key={team.id} value={index}>{team.name}</option>
-                  ))}
-                </select>
-                <select value={selectedPlayer} onChange={(e) => setSelectedPlayer(parseInt(e.target.value))}>
-                  {teams[selectedTeam]?.players.map((player, index) => (
-                    <option key={player.id} value={index}>{player.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="input-group">
-                <input
-                  type="text"
-                  placeholder="Player name"
-                  value={newPlayerName}
-                  onChange={(e) => setNewPlayerName(e.target.value)}
-                />
-                <button onClick={updatePlayerName}>Update Name</button>
-              </div>
-              <div className="input-group">
-                <input
-                  type="number"
-                  placeholder="Kills"
-                  value={playerStats.kills}
-                  onChange={(e) => setPlayerStats({...playerStats, kills: e.target.value})}
-                />
-                <input
-                  type="number"
-                  placeholder="Deaths"
-                  value={playerStats.deaths}
-                  onChange={(e) => setPlayerStats({...playerStats, deaths: e.target.value})}
-                />
-                <input
-                  type="number"
-                  placeholder="Assists"
-                  value={playerStats.assists}
-                  onChange={(e) => setPlayerStats({...playerStats, assists: e.target.value})}
-                />
-                <button onClick={updatePlayerStats}>Update Stats</button>
-              </div>
-            </div>
-
-            <button className="reset-btn" onClick={resetTournament}>Reset Tournament</button>
           </div>
-        )}
-      </div>
+
+          <div className="tournament-content">
+            <div className="teams-section">
+              <h2>{selectedMatch === 'aram' ? 'ARAM Teams & Players' : "Summoner's Rift Teams & Players"}</h2>
+              <div className="teams-grid">
+                {currentTeams.map((team, index) => (
+                  <TeamCard key={team.id} team={team} index={index} />
+                ))}
+              </div>
+            </div>
+
+            <div className="bracket-section">
+              <h2>{selectedMatch === 'aram' ? 'ARAM Bracket' : 'Summoner\'s Rift Bracket'}</h2>
+              <div className="bracket-container">
+                {selectedMatch === 'aram' && (
+                          <MatchCard
+                    match={matchResults.aram}
+                    title="ARAM Match"
+                    round="aram"
+                    mode={mode}
+                    onSelectWinner={openConfirmModal}
+                  />
+                )}
+                {selectedMatch === 'summonersRift' && (
+                  <MatchCard
+                    match={matchResults.summonersRift}
+                    title="Summoner's Rift Match"
+                    round="summonersRift"
+                    mode={mode}
+                    onSelectWinner={openConfirmModal}
+                  />
+                )}
+              </div>
+            </div>
+
+            {mode === 'admin' && (
+              <div className="admin-controls">
+                <div className="control-section">
+                  <h3>Edit Team Names</h3>
+                  <select value={selectedTeam} onChange={(e) => setSelectedTeam(parseInt(e.target.value))}>
+                    {currentTeams.map((team, index) => (
+                      <option key={team.id} value={index}>{team.name}</option>
+                    ))}
+                  </select>
+                  <div className="input-group">
+                    <input
+                      type="text"
+                      placeholder="New team name"
+                      value={newTeamName}
+                      onChange={(e) => setNewTeamName(e.target.value)}
+                    />
+                    <button onClick={updateTeamName}>Update Team</button>
+                  </div>
+                  <div className="input-group">
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Team wins"
+                      value={newTeamWins}
+                      onChange={(e) => setNewTeamWins(e.target.value)}
+                    />
+                    <button onClick={updateTeamWins}>Update Wins</button>
+                  </div>
+                </div>
+
+                <div className="control-section">
+                  <h3>Edit Player Stats</h3>
+                  <div className="player-controls">
+                    <select value={selectedTeam} onChange={(e) => setSelectedTeam(parseInt(e.target.value))}>
+                      {currentTeams.map((team, index) => (
+                        <option key={team.id} value={index}>{team.name}</option>
+                      ))}
+                    </select>
+                    <select value={selectedPlayer} onChange={(e) => setSelectedPlayer(parseInt(e.target.value))}>
+                      {currentTeams[selectedTeam]?.players.map((player, index) => (
+                        <option key={player.id} value={index}>{player.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <input
+                      type="text"
+                      placeholder="Player name"
+                      value={newPlayerName}
+                      onChange={(e) => setNewPlayerName(e.target.value)}
+                    />
+                    <button onClick={updatePlayerName}>Update Name</button>
+                  </div>
+                  <div className="input-group">
+                    <input
+                      type="number"
+                      placeholder="Kills"
+                      value={playerStats.kills}
+                      onChange={(e) => setPlayerStats({...playerStats, kills: e.target.value})}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Deaths"
+                      value={playerStats.deaths}
+                      onChange={(e) => setPlayerStats({...playerStats, deaths: e.target.value})}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Assists"
+                      value={playerStats.assists}
+                      onChange={(e) => setPlayerStats({...playerStats, assists: e.target.value})}
+                    />
+                    <button onClick={updatePlayerStats}>Update Stats</button>
+                  </div>
+                </div>
+
+                <button className="reset-btn" onClick={resetTournament}>Reset Tournament</button>
+              </div>
+            )}
+          </div>
+
+          {confirmModal.open && (
+            <div className="modal-overlay">
+              <div className="confirm-modal">
+                <div className="modal-header">
+                  <h3>Confirm winner</h3>
+                </div>
+                <p>
+                  Are you sure you want to set <strong>{confirmModal.teamName}</strong> as the winner for the <strong>{confirmModal.round === 'aram' ? 'ARAM' : "Summoner's Rift"}</strong> match?
+                </p>
+                <div className="modal-actions">
+                  <button className="secondary-btn" onClick={closeConfirmModal}>Cancel</button>
+                  <button
+                    className="primary-btn"
+                    onClick={() => updateMatchResult(confirmModal.round, confirmModal.winnerIndex)}
+                  >
+                    Confirm winner
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }
