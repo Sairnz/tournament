@@ -559,6 +559,15 @@ select:focus {
   max-width: 460px;
 }
 
+.rules-card {
+  max-width: 990px;
+}
+
+.rules-section {
+  text-align: left;
+  width: 100%;
+}
+
 .landing-card h1 {
   margin-bottom: 18px;
   color: #7a124f;

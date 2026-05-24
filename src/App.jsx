@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { ref, set, onValue } from 'firebase/database'
+import { database } from './firebase'
 import './App.css'
 
 function App() {
@@ -53,6 +55,7 @@ function App() {
     aram: { team1: 0, team2: 1, winner: null },
     summonersRift: { team1: 0, team2: 1, winner: null }
   })
+  const [rules, setRules] = useState(null)
 
   const ADMIN_PASSWORD = 'admin123'
 
@@ -209,6 +212,28 @@ function App() {
     }
   }
 
+  useEffect(() => {
+    const rulesRef = ref(database, 'tournament/rules')
+    const unsubscribe = onValue(rulesRef, (snapshot) => {
+      setRules(snapshot.val())
+    })
+    return () => unsubscribe()
+  }, [])
+
+  const saveRules = () => {
+    set(ref(database, 'tournament/rules'), {
+      format: '5v5 | Best of 3 (Bo3) for both Summoner\'s Rift (SR) and ARAM.',
+      selection: 'Streamer spins a wheel of all 10 players before game day. First 5 = Team A; last 5 = Team B.',
+      lockIn: 'No choosing teammates. Teams are locked once drawn.',
+      championRules: 'Summoner\'s Rift: Normal draft rules. Pick any available champion. ARAM Mayhem: Play the assigned champion. No dodging. Rerolls allowed only if mutually agreed beforehand.',
+      attendance: 'All 10 players must confirm readiness before starting. 15 Mins Late: Official warning. 20 Mins Late: Possible replacement or team forfeit.',
+      pauses: 'Allowed briefly for DC/tech issues only. Abuse is banned. Organizer decides final action if a player can\'t return. Remake YES: Serious tech issues, early DCs, or Organizer approval. Remake NO: Bad starts, failed invades, or unlucky ARAM rolls.',
+      conduct: 'Zero tolerance for rage-quitting, griefing, intentional feeding, or personal attacks. Friendly banter is okay. Streamer decisions are absolute. Have fun! Embrace the random chaos and laughs.'
+    })
+      .then(() => console.log('Rules saved to Firebase'))
+      .catch((error) => console.error('Firebase save error:', error))
+  }
+
   const TeamCard = ({ team, index }) => {
     const totalKills = team.players.reduce((sum, player) => sum + player.kills, 0)
 
@@ -296,17 +321,49 @@ function App() {
 
       {mode === 'rules' && (
         <div className="landing-page">
-          <div className="landing-card auth-card">
+          <div className="landing-card auth-card rules-card">
             <h1>Tournament Rules</h1>
-            <p>
-              Welcome to the tournament. Here are the main guidelines:
-            </p>
-            <ul className="rules-list">
-              <li>Each team has 5 players.</li>
-              <li>Wins and player stats are updated by admin only.</li>
-              <li>Viewers can watch the bracket and team details but cannot edit anything.</li>
-              <li>The final winner is decided by the admin selection.</li>
-            </ul>
+            <div className="rules-section">
+              <h2>Teams & Format</h2>
+              <ul className="rules-list">
+                <li>Format: 5v5 | Best of 3 (Bo3) for both Summoner's Rift (SR) and ARAM.</li>
+                <li>Selection: Streamer spins a wheel of all 10 players before game day. First 5 = Team A; last 5 = Team B.</li>
+                <li>Lock-in: No choosing teammates. Teams are locked once drawn.</li>
+              </ul>
+
+              <h2>Champion Rules</h2>
+              <ul className="rules-list">
+                <li>Summoner's Rift: Normal draft rules. Pick any available champion.</li>
+                <li>ARAM Mayhem: Play the assigned champion. No dodging. Rerolls allowed only if mutually agreed beforehand.</li>
+              </ul>
+
+              <h2>Attendance & Lateness</h2>
+              <ul className="rules-list">
+                <li>Start: All 10 players must confirm readiness before starting.</li>
+                <li>15 Mins Late: Official warning.</li>
+                <li>20 Mins Late: Possible replacement or team forfeit.</li>
+              </ul>
+
+              <h2>Pauses & Remakes</h2>
+              <ul className="rules-list">
+                <li>Pauses: Allowed briefly for DC/tech issues only. Abuse is banned. Organizer decides final action if a player can't return.</li>
+                <li>Remake YES: Serious tech issues, early DCs, or Organizer approval.</li>
+                <li>Remake NO: Bad starts, failed invades, or unlucky ARAM rolls.</li>
+              </ul>
+
+              <h2>Conduct & Rulings</h2>
+              <ul className="rules-list">
+                <li>Sportsmanship: Zero tolerance for rage-quitting, griefing, intentional feeding, or personal attacks. Friendly banter is okay.</li>
+                <li>Final Word: Streamer decisions are absolute.</li>
+                <li>Golden Rule: Have fun! Embrace the random chaos and laughs.</li>
+              </ul>
+            </div>
+            {rules && (
+              <div className="firebase-rules-preview">
+                <h2>Firebase rules loaded</h2>
+                <pre>{JSON.stringify(rules, null, 2)}</pre>
+              </div>
+            )}
             <button className="secondary-btn" onClick={handleBackToSelection}>Back to selection</button>
           </div>
         </div>
@@ -475,6 +532,7 @@ function App() {
                 </div>
 
                 <button className="reset-btn" onClick={resetTournament}>Reset Tournament</button>
+                <button className="secondary-btn" onClick={saveRules}>Save rules to Firebase</button>
               </div>
             )}
           </div>
