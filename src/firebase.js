@@ -3,20 +3,16 @@ import { initializeApp } from 'firebase/app'
 import { getDatabase } from 'firebase/database'
 
 const firebaseConfig = {
-  apiKey: 'YOUR_API_KEY',
-  authDomain: 'YOUR_AUTH_DOMAIN',
-  databaseURL: 'https://YOUR_PROJECT_ID.firebaseio.com',
-  projectId: 'YOUR_PROJECT_ID',
-  storageBucket: 'YOUR_PROJECT_ID.appspot.com',
-  messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-  appId: 'YOUR_APP_ID'
+ apiKey: "AIzaSyBATPs8NbxyA228l1Ey2og2AXiaYOqZlkE",
+  authDomain: "tournament-4f141.firebaseapp.com",
+  databaseURL: "https://tournament-4f141-default-rtdb.firebaseio.com",
+  projectId: "tournament-4f141",
+  storageBucket: "tournament-4f141.firebasestorage.app",
+  messagingSenderId: "543840121565",
+  appId: "1:543840121565:web:78d4b55734a0561b776134",
+  measurementId: "G-SK5NGSRV5R"
 }
 
 const app = initializeApp(firebaseConfig)
 export const database = getDatabase(app)
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
-  ...
-}
