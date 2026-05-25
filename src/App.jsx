@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react'
-import { ref, set, onValue } from 'firebase/database'
-import { database } from './firebase'
 import './App.css'
 
 function App() {
@@ -213,25 +211,71 @@ function App() {
   }
 
   useEffect(() => {
-    const rulesRef = ref(database, 'tournament/rules')
-    const unsubscribe = onValue(rulesRef, (snapshot) => {
-      setRules(snapshot.val())
-    })
-    return () => unsubscribe()
+    const fetchInitial = async () => {
+      try {
+        const [rulesRes, dataRes] = await Promise.all([
+          fetch('/api/tournament/rules'),
+          fetch('/api/tournament/data')
+        ])
+
+        if (rulesRes.ok) {
+          const rulesData = await rulesRes.json()
+          setRules(rulesData)
+        }
+
+        if (dataRes.ok) {
+          const state = await dataRes.json()
+          if (state.matchTeams) setMatchTeams(state.matchTeams)
+          if (state.matchResults) setMatchResults(state.matchResults)
+        }
+      } catch (error) {
+        console.error('Error fetching initial data:', error)
+      }
+    }
+
+    fetchInitial()
   }, [])
 
-  const saveRules = () => {
-    set(ref(database, 'tournament/rules'), {
-      format: '5v5 | Best of 3 (Bo3) for both Summoner\'s Rift (SR) and ARAM.',
-      selection: 'Streamer spins a wheel of all 10 players before game day. First 5 = Team A; last 5 = Team B.',
-      lockIn: 'No choosing teammates. Teams are locked once drawn.',
-      championRules: 'Summoner\'s Rift: Normal draft rules. Pick any available champion. ARAM Mayhem: Play the assigned champion. No dodging. Rerolls allowed only if mutually agreed beforehand.',
-      attendance: 'All 10 players must confirm readiness before starting. 15 Mins Late: Official warning. 20 Mins Late: Possible replacement or team forfeit.',
-      pauses: 'Allowed briefly for DC/tech issues only. Abuse is banned. Organizer decides final action if a player can\'t return. Remake YES: Serious tech issues, early DCs, or Organizer approval. Remake NO: Bad starts, failed invades, or unlucky ARAM rolls.',
-      conduct: 'Zero tolerance for rage-quitting, griefing, intentional feeding, or personal attacks. Friendly banter is okay. Streamer decisions are absolute. Have fun! Embrace the random chaos and laughs.'
-    })
-      .then(() => console.log('Rules saved to Firebase'))
-      .catch((error) => console.error('Firebase save error:', error))
+  const saveRules = async () => {
+    try {
+      const response = await fetch('/api/tournament/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          format: '5v5 | Best of 3 (Bo3) for both Summoner\'s Rift (SR) and ARAM.',
+          selection: 'Streamer spins a wheel of all 10 players before game day. First 5 = Team A; last 5 = Team B.',
+          lockIn: 'No choosing teammates. Teams are locked once drawn.',
+          championRules: 'Summoner\'s Rift: Normal draft rules. Pick any available champion. ARAM Mayhem: Play the assigned champion. No dodging. Rerolls allowed only if mutually agreed beforehand.',
+          attendance: 'All 10 players must confirm readiness before starting. 15 Mins Late: Official warning. 20 Mins Late: Possible replacement or team forfeit.',
+          pauses: 'Allowed briefly for DC/tech issues only. Abuse is banned. Organizer decides final action if a player can\'t return. Remake YES: Serious tech issues, early DCs, or Organizer approval. Remake NO: Bad starts, failed invades, or unlucky ARAM rolls.',
+          conduct: 'Zero tolerance for rage-quitting, griefing, intentional feeding, or personal attacks. Friendly banter is okay. Streamer decisions are absolute. Have fun! Embrace the random chaos and laughs.'
+        })
+      })
+      if (response.ok) {
+        console.log('Rules saved to MongoDB')
+      } else {
+        console.error('Failed to save rules')
+      }
+    } catch (error) {
+      console.error('Error saving rules:', error)
+    }
+  }
+
+  const saveTournament = async () => {
+    try {
+      const response = await fetch('/api/tournament/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchTeams, matchResults })
+      })
+      if (response.ok) {
+        console.log('Tournament saved to MongoDB')
+      } else {
+        console.error('Failed to save tournament')
+      }
+    } catch (error) {
+      console.error('Error saving tournament:', error)
+    }
   }
 
   const TeamCard = ({ team, index }) => {
@@ -359,8 +403,8 @@ function App() {
               </ul>
             </div>
             {rules && (
-              <div className="firebase-rules-preview">
-                <h2>Firebase rules loaded</h2>
+              <div className="rules-preview">
+                <h2>Rules loaded</h2>
                 <pre>{JSON.stringify(rules, null, 2)}</pre>
               </div>
             )}
@@ -532,7 +576,8 @@ function App() {
                 </div>
 
                 <button className="reset-btn" onClick={resetTournament}>Reset Tournament</button>
-                <button className="secondary-btn" onClick={saveRules}>Save rules to Firebase</button>
+                <button className="secondary-btn" onClick={saveRules}>Save rules to MongoDB</button>
+                <button className="secondary-btn" onClick={saveTournament}>Save tournament to MongoDB</button>
               </div>
             )}
           </div>
