@@ -1,11 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Inter } from "next/font/google";
-import client from "@/lib/mongodb";
+import client, { connectToDatabase } from "@/lib/mongodb";
 import type { InferGetServerSidePropsType, GetServerSideProps } from "next";
 
 type ConnectionStatus = {
   isConnected: boolean;
+  matchTeams?: any;
+  matchResults?: any;
+  rules?: any;
 };
 
 const inter = Inter({ subsets: ["latin"] });
@@ -14,9 +17,21 @@ export const getServerSideProps: GetServerSideProps<
   ConnectionStatus
 > = async () => {
   try {
-    await client.connect(); // `await client.connect()` will use the default database passed in the MONGODB_URI
+    await client.connect(); // ensure client connected
+    const db = await connectToDatabase();
+    const state = await db.collection('state').findOne({ _id: 'default' })
+    const rules = await db.collection('rules').findOne({ _id: 'default' })
+
+    // Serialize for Next.js
+    const serialized = (obj: any) => (obj ? JSON.parse(JSON.stringify(obj)) : null)
+
     return {
-      props: { isConnected: true },
+      props: {
+        isConnected: true,
+        matchTeams: serialized(state?.matchTeams) || null,
+        matchResults: serialized(state?.matchResults) || null,
+        rules: serialized(rules) || null,
+      },
     };
   } catch (e) {
     console.error(e);
@@ -28,6 +43,9 @@ export const getServerSideProps: GetServerSideProps<
 
 export default function Home({
   isConnected,
+  matchTeams,
+  matchResults,
+  rules,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <main
@@ -88,6 +106,12 @@ export default function Home({
             for instructions.
           </h2>
         )}
+        <div className="w-full max-w-3xl mt-6">
+          <h3 className="text-lg font-medium">Stored tournament data</h3>
+          <pre className="mt-2 overflow-auto max-h-64 bg-gray-100 p-4 rounded">
+            {JSON.stringify({ matchTeams, matchResults, rules }, null, 2)}
+          </pre>
+        </div>
         <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
           This page uses the&nbsp;<strong>Pages Router</strong>. Check out the
           App Router version here:&nbsp;
