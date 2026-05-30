@@ -282,9 +282,9 @@ function App() {
     }
   }, [swrData, mode, initialDataLoaded])
 
-  // Supabase realtime subscription to update state when DB changes
+  // Supabase realtime subscription to update state when DB changes (disabled in admin mode)
   useEffect(() => {
-    if (!supabase) return
+    if (!supabase || mode === 'admin') return
 
     const channel = supabase
       .channel('tournament_state1_channel')
@@ -305,7 +305,7 @@ function App() {
     return () => {
       try { channel.unsubscribe(); } catch (e) { /* ignore */ }
     }
-  }, [supabase])
+  }, [supabase, mode])
 
   const saveToSupabase = async (payload) => {
     if (!supabaseConfigured) {
