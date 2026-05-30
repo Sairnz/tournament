@@ -669,8 +669,6 @@ function App() {
                 </div>
 
                 <button className="reset-btn" onClick={resetTournament}>Reset Tournament</button>
-                <button className="secondary-btn" onClick={saveRules}>Save rules to MongoDB</button>
-                <button className="secondary-btn" onClick={saveTournament}>Save tournament to MongoDB</button>
               </div>
             )}
           </div>
