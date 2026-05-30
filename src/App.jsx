@@ -17,9 +17,6 @@ function App() {
   const [mode, setMode] = useState('landing')
   const [adminPassword, setAdminPassword] = useState('')
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
-  const [user, setUser] = useState(null)
-  const [adminEmail, setAdminEmail] = useState('')
-  const [authMessage, setAuthMessage] = useState('')
 
   const initialMatchTeams = [
     {
@@ -73,7 +70,7 @@ function App() {
   const [saveErrorMsg, setSaveErrorMsg] = useState('')
   const [initialDataLoaded, setInitialDataLoaded] = useState(false)
 
-  // legacy password removed; use Supabase Auth instead
+  const ADMIN_PASSWORD = 'admin123'
   const supabaseConfigured = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY)
 
   function debounce(fn, wait = 800) {
@@ -257,84 +254,15 @@ function App() {
   }, [mode, isAdminAuthenticated])
 
   const handleAdminLogin = () => {
-    // no-op: kept for compatibility until sign-in flow available
-  }
-
-  const sendSignInLink = async (email) => {
-    if (!supabase) {
-      setAuthMessage('Supabase client not configured')
-      return
-    }
-    try {
-      setAuthMessage('Sending sign-in link...')
-      const { error } = await supabase.auth.signInWithOtp({ email })
-      if (error) {
-        setAuthMessage(error.message)
-      } else {
-        setAuthMessage('Check your email for the sign-in link')
-        setAdminEmail('')
-      }
-    } catch (e) {
-      setAuthMessage(e.message || String(e))
+    if (adminPassword === ADMIN_PASSWORD) {
+      setIsAdminAuthenticated(true)
+      setMode('admin')
+      setAdminPassword('')
+    } else {
+      alert('Incorrect password!')
+      setAdminPassword('')
     }
   }
-
-  const signOut = async () => {
-    if (!supabase) return
-    await supabase.auth.signOut()
-    setUser(null)
-    setIsAdminAuthenticated(false)
-  }
-
-  const checkIsAdmin = async (uid) => {
-    if (!supabase || !uid) return false
-    try {
-      const { data, error } = await supabase.from('admins').select('uid').eq('uid', uid).single()
-      if (error) return false
-      return Boolean(data && data.uid)
-    } catch (e) {
-      return false
-    }
-  }
-
-  useEffect(() => {
-    if (!supabase) return
-    let mounted = true
-    ;(async () => {
-      try {
-        const {
-          data: { user: currentUser }
-        } = await supabase.auth.getUser()
-        if (!mounted) return
-        if (currentUser) {
-          setUser(currentUser)
-          const admin = await checkIsAdmin(currentUser.id)
-          setIsAdminAuthenticated(admin)
-          if (admin) setMode('admin')
-        }
-      } catch (e) {
-        // ignore
-      }
-    })()
-
-    const { subscription } = supabase.auth.onAuthStateChange((event, session) => {
-      const currentUser = session?.user ?? null
-      setUser(currentUser)
-      if (currentUser) {
-        checkIsAdmin(currentUser.id).then((admin) => {
-          setIsAdminAuthenticated(admin)
-          if (admin) setMode('admin')
-        })
-      } else {
-        setIsAdminAuthenticated(false)
-      }
-    })
-
-    return () => {
-      mounted = false
-      try { subscription?.unsubscribe() } catch (e) { /* ignore */ }
-    }
-  }, [supabase])
 
   useEffect(() => {
     if (!swrData) return
@@ -407,11 +335,6 @@ function App() {
 
   const saveRules = useCallback(async () => {
     try {
-      if (!isAdminAuthenticated) {
-        setSaveStatus('error')
-        setSaveErrorMsg('Not authorized: sign in as an admin to save.')
-        return
-      }
       setSaveStatus('saving')
       const result = await saveToSupabase({ rules: DEFAULT_RULES })
       if (result?.success) {
@@ -439,11 +362,6 @@ function App() {
 
   const saveTournament = useCallback(async () => {
     try {
-      if (!isAdminAuthenticated) {
-        setSaveStatus('error')
-        setSaveErrorMsg('Not authorized: sign in as an admin to save.')
-        return
-      }
       setSaveStatus('saving')
       const result = await saveToSupabase({ match_teams: matchTeams, match_results: matchResults })
       if (result?.success) {
@@ -611,22 +529,16 @@ function App() {
         <div className="landing-page">
           <div className="landing-card auth-card">
             <h1>Admin Login</h1>
-            <p>Sign in with your email to access the admin panel.</p>
+            <p>Enter the password to access the admin panel.</p>
             <div className="input-group">
               <input
-                type="email"
-                placeholder="Your email"
-                value={adminEmail}
-                onChange={(e) => setAdminEmail(e.target.value)}
+                type="password"
+                placeholder="Admin password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
               />
-              <button onClick={() => sendSignInLink(adminEmail)}>Send sign-in link</button>
+              <button onClick={handleAdminLogin}>Login</button>
             </div>
-            {authMessage && <div style={{marginTop:8}}>{authMessage}</div>}
-            {user && (
-              <div style={{marginTop:8}}>
-                Signed in as {user.email || user.id} <button onClick={signOut}>Sign out</button>
-              </div>
-            )}
             <button className="secondary-btn" onClick={handleBackToSelection}>Back to selection</button>
           </div>
         </div>
