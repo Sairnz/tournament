@@ -86,7 +86,7 @@ function App() {
     }
 
     const { data, error } = await supabase
-      .from('tournament_state')
+      .from('tournament_state1')
       .select('match_teams, match_results, rules')
       .eq('id', 1)
       .single()
@@ -286,10 +286,10 @@ function App() {
     if (!supabase) return
 
     const channel = supabase
-      .channel('tournament_state_channel')
+      .channel('tournament_state1_channel')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'tournament_state' },
+        { event: '*', schema: 'public', table: 'tournament_state1' },
         (payload) => {
           console.debug('realtime payload', payload)
           const row = payload.new ?? payload.record ?? null
@@ -315,7 +315,7 @@ function App() {
     console.debug('Saving payload to Supabase:', payload)
 
     const response = await supabase
-      .from('tournament_state')
+      .from('tournament_state1')
       .upsert({ id: 1, ...payload }, { onConflict: 'id' })
 
     console.debug('Supabase upsert response:', response)
