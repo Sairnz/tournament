@@ -281,6 +281,31 @@ function App() {
     }
   }, [swrData, mode, initialDataLoaded])
 
+  // Supabase realtime subscription to update state when DB changes
+  useEffect(() => {
+    if (!supabase) return
+
+    const channel = supabase
+      .channel('tournament_state_channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tournament_state' },
+        (payload) => {
+          console.debug('realtime payload', payload)
+          const row = payload.new ?? payload.record ?? null
+          if (!row) return
+          if (row.match_teams) setMatchTeams(row.match_teams)
+          if (row.match_results) setMatchResults(row.match_results)
+          if (row.rules) setRules(row.rules)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      try { channel.unsubscribe(); } catch (e) { /* ignore */ }
+    }
+  }, [supabase])
+
   const saveToSupabase = async (payload) => {
     if (!supabaseConfigured) {
       alert('Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
