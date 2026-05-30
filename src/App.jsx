@@ -313,26 +313,28 @@ function App() {
     }
 
     console.debug('Saving payload to Supabase:', payload)
-
+    // upsert and return the new row so we can update local cache immediately
     const response = await supabase
       .from('tournament_state1')
       .upsert({ id: 1, ...payload }, { onConflict: 'id' })
+      .select()
+      .single()
 
     console.debug('Supabase upsert response:', response)
 
     if (response.error) {
       console.error('Supabase save error:', response.error)
-      return false
+      return { success: false, error: response.error }
     }
 
-    return true
+    return { success: true, data: response.data }
   }
 
   const saveRules = useCallback(async () => {
     try {
       setSaveStatus('saving')
-      const saved = await saveToSupabase({ rules: DEFAULT_RULES })
-      if (saved) {
+      const result = await saveToSupabase({ rules: DEFAULT_RULES })
+      if (result?.success) {
         setRules(DEFAULT_RULES)
         setSaveStatus('saved')
         if (mutate) {
@@ -343,6 +345,7 @@ function App() {
         }
         setTimeout(() => setSaveStatus('idle'), 2000)
       } else {
+        console.error('Save rules failed', result?.error)
         setSaveStatus('error')
       }
     } catch (error) {
@@ -354,18 +357,20 @@ function App() {
   const saveTournament = useCallback(async () => {
     try {
       setSaveStatus('saving')
-      const saved = await saveToSupabase({ match_teams: matchTeams, match_results: matchResults })
-      if (saved) {
+      const result = await saveToSupabase({ match_teams: matchTeams, match_results: matchResults })
+      if (result?.success) {
         console.log('Tournament saved to Supabase')
         setSaveStatus('saved')
         if (mutate) {
+          // use returned data from Supabase if available to avoid stale revalidation
           mutate(
-            { ...swrData, match_teams: matchTeams, match_results: matchResults },
+            { ...swrData, match_teams: result.data?.match_teams ?? matchTeams, match_results: result.data?.match_results ?? matchResults },
             false
           )
         }
         setTimeout(() => setSaveStatus('idle'), 2000)
       } else {
+        console.error('Save tournament failed', result?.error)
         setSaveStatus('error')
       }
     } catch (error) {
