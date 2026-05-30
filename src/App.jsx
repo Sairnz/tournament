@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import useSWR from 'swr'
 import { supabase } from './lib/supabaseClient'
 import './App.css'
@@ -328,7 +328,7 @@ function App() {
     return true
   }
 
-  const saveRules = async () => {
+  const saveRules = useCallback(async () => {
     try {
       setSaveStatus('saving')
       const saved = await saveToSupabase({ rules: DEFAULT_RULES })
@@ -336,7 +336,10 @@ function App() {
         setRules(DEFAULT_RULES)
         setSaveStatus('saved')
         if (mutate) {
-          mutate()
+          mutate(
+            { ...swrData, rules: DEFAULT_RULES },
+            false
+          )
         }
         setTimeout(() => setSaveStatus('idle'), 2000)
       } else {
@@ -346,9 +349,9 @@ function App() {
       console.error('Error saving rules:', error)
       setSaveStatus('error')
     }
-  }
+  }, [mutate, swrData])
 
-  const saveTournament = async () => {
+  const saveTournament = useCallback(async () => {
     try {
       setSaveStatus('saving')
       const saved = await saveToSupabase({ match_teams: matchTeams, match_results: matchResults })
@@ -356,7 +359,10 @@ function App() {
         console.log('Tournament saved to Supabase')
         setSaveStatus('saved')
         if (mutate) {
-          mutate()
+          mutate(
+            { ...swrData, match_teams: matchTeams, match_results: matchResults },
+            false
+          )
         }
         setTimeout(() => setSaveStatus('idle'), 2000)
       } else {
@@ -366,9 +372,9 @@ function App() {
       console.error('Error saving tournament:', error)
       setSaveStatus('error')
     }
-  }
+  }, [matchTeams, matchResults, mutate, swrData])
 
-  const debouncedSave = debounce(() => saveTournament(), 800)
+  const debouncedSave = useMemo(() => debounce(saveTournament, 800), [saveTournament])
 
   const TeamCard = ({ team, index }) => {
     const totalKills = team.players.reduce((sum, player) => sum + player.kills, 0)
