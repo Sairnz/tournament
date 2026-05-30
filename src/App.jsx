@@ -67,6 +67,7 @@ function App() {
   })
   const [rules, setRules] = useState(null)
   const [saveStatus, setSaveStatus] = useState('idle')
+  const [saveErrorMsg, setSaveErrorMsg] = useState('')
   const [initialDataLoaded, setInitialDataLoaded] = useState(false)
 
   const ADMIN_PASSWORD = 'admin123'
@@ -324,9 +325,11 @@ function App() {
 
     if (response.error) {
       console.error('Supabase save error:', response.error)
+      try { setSaveErrorMsg(response.error.message || JSON.stringify(response.error)) } catch (e) { /* ignore */ }
       return { success: false, error: response.error }
     }
 
+    try { setSaveErrorMsg('') } catch (e) { /* ignore */ }
     return { success: true, data: response.data }
   }
 
@@ -337,6 +340,7 @@ function App() {
       if (result?.success) {
         setRules(DEFAULT_RULES)
         setSaveStatus('saved')
+        setSaveErrorMsg('')
         if (mutate) {
           mutate(
             { ...swrData, rules: DEFAULT_RULES },
@@ -347,10 +351,12 @@ function App() {
       } else {
         console.error('Save rules failed', result?.error)
         setSaveStatus('error')
+        try { setSaveErrorMsg(result?.error?.message || JSON.stringify(result?.error)) } catch (e) { /* ignore */ }
       }
     } catch (error) {
       console.error('Error saving rules:', error)
       setSaveStatus('error')
+      try { setSaveErrorMsg(error.message || JSON.stringify(error)) } catch (e) { /* ignore */ }
     }
   }, [mutate, swrData])
 
@@ -361,6 +367,7 @@ function App() {
       if (result?.success) {
         console.log('Tournament saved to Supabase')
         setSaveStatus('saved')
+        setSaveErrorMsg('')
         if (mutate) {
           // use returned data from Supabase if available to avoid stale revalidation
           mutate(
@@ -372,10 +379,12 @@ function App() {
       } else {
         console.error('Save tournament failed', result?.error)
         setSaveStatus('error')
+        try { setSaveErrorMsg(result?.error?.message || JSON.stringify(result?.error)) } catch (e) { /* ignore */ }
       }
     } catch (error) {
       console.error('Error saving tournament:', error)
       setSaveStatus('error')
+      try { setSaveErrorMsg(error.message || JSON.stringify(error)) } catch (e) { /* ignore */ }
     }
   }, [matchTeams, matchResults, mutate, swrData])
 
@@ -609,6 +618,11 @@ function App() {
                     {saveStatus === 'saved' && <span style={{color:'#059669'}}>Saved</span>}
                     {saveStatus === 'error' && <span style={{color:'#dc2626'}}>Save failed</span>}
                   </div>
+                  {saveStatus === 'error' && saveErrorMsg && (
+                    <div className="save-error" style={{color:'#b91c1c', marginBottom: '12px'}}>
+                      <strong>Save error:</strong> {saveErrorMsg}
+                    </div>
+                  )}
                 <div className="control-section">
                   <h3>Edit Team Names</h3>
                   <select value={selectedTeam} onChange={(e) => setSelectedTeam(parseInt(e.target.value))}>
