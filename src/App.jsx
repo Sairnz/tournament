@@ -312,12 +312,16 @@ function App() {
       return false
     }
 
-    const { error } = await supabase
+    console.debug('Saving payload to Supabase:', payload)
+
+    const response = await supabase
       .from('tournament_state')
       .upsert({ id: 1, ...payload }, { onConflict: 'id' })
 
-    if (error) {
-      console.error('Supabase save error:', error)
+    console.debug('Supabase upsert response:', response)
+
+    if (response.error) {
+      console.error('Supabase save error:', response.error)
       return false
     }
 
