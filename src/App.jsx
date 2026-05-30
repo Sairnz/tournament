@@ -98,7 +98,7 @@ function App() {
     return data || {}
   }
 
-  const { data: swrData } = useSWR(
+  const { data: swrData, mutate } = useSWR(
     supabaseConfigured ? 'supabase-tournament-state' : null,
     fetchTournamentState,
     { refreshInterval: 5000 }
@@ -331,6 +331,9 @@ function App() {
       if (saved) {
         setRules(DEFAULT_RULES)
         setSaveStatus('saved')
+        if (mutate) {
+          mutate()
+        }
         setTimeout(() => setSaveStatus('idle'), 2000)
       } else {
         setSaveStatus('error')
@@ -348,6 +351,9 @@ function App() {
       if (saved) {
         console.log('Tournament saved to Supabase')
         setSaveStatus('saved')
+        if (mutate) {
+          mutate()
+        }
         setTimeout(() => setSaveStatus('idle'), 2000)
       } else {
         setSaveStatus('error')
