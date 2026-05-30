@@ -1,5 +1,17 @@
 import { useEffect, useState } from 'react'
+import useSWR from 'swr'
+import { supabase } from './lib/supabaseClient'
 import './App.css'
+
+const DEFAULT_RULES = {
+  format: '5v5 | Best of 3 (Bo3) for both Summoner\'s Rift (SR) and ARAM.',
+  selection: 'Streamer spins a wheel of all 10 players before game day. First 5 = Team A; last 5 = Team B.',
+  lockIn: 'No choosing teammates. Teams are locked once drawn.',
+  championRules: 'Summoner\'s Rift: Normal draft rules. Pick any available champion. ARAM Mayhem: Play the assigned champion. No dodging. Rerolls allowed only if mutually agreed beforehand.',
+  attendance: 'All 10 players must confirm readiness before starting. 15 Mins Late: Official warning. 20 Mins Late: Possible replacement or team forfeit.',
+  pauses: 'Allowed briefly for DC/tech issues only. Abuse is banned. Organizer decides final action if a player can\'t return. Remake YES: Serious tech issues, early DCs, or Organizer approval. Remake NO: Bad starts, failed invades, or unlucky ARAM rolls.',
+  conduct: 'Zero tolerance for rage-quitting, griefing, intentional feeding, or personal attacks. Friendly banter is okay. Streamer decisions are absolute. Have fun! Embrace the random chaos and laughs.'
+}
 
 function App() {
   const [mode, setMode] = useState('landing')
@@ -54,8 +66,43 @@ function App() {
     summonersRift: { team1: 0, team2: 1, winner: null }
   })
   const [rules, setRules] = useState(null)
+  const [saveStatus, setSaveStatus] = useState('idle')
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false)
 
   const ADMIN_PASSWORD = 'admin123'
+  const supabaseConfigured = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY)
+
+  function debounce(fn, wait = 800) {
+    let timer
+    return (...args) => {
+      clearTimeout(timer)
+      timer = setTimeout(() => fn(...args), wait)
+    }
+  }
+
+  const fetchTournamentState = async () => {
+    if (!supabaseConfigured) {
+      throw new Error('Supabase is not configured')
+    }
+
+    const { data, error } = await supabase
+      .from('tournament_state')
+      .select('match_teams, match_results, rules')
+      .eq('id', 1)
+      .single()
+
+    if (error && error.code !== 'PGRST116') {
+      throw error
+    }
+
+    return data || {}
+  }
+
+  const { data: swrData } = useSWR(
+    supabaseConfigured ? 'supabase-tournament-state' : null,
+    fetchTournamentState,
+    { refreshInterval: 5000 }
+  )
 
   const updateTeamName = () => {
     if (newTeamName.trim() && selectedTeam >= 0) {
@@ -68,6 +115,7 @@ function App() {
       updatedMatchTeams[selectedMatch] = updatedTeams
       setMatchTeams(updatedMatchTeams)
       setNewTeamName('')
+      if (isAdminAuthenticated) { setSaveStatus('saving'); debouncedSave() }
     }
   }
 
@@ -82,6 +130,7 @@ function App() {
       updatedMatchTeams[selectedMatch] = updatedTeams
       setMatchTeams(updatedMatchTeams)
       setNewTeamWins('')
+      if (isAdminAuthenticated) { setSaveStatus('saving'); debouncedSave() }
     }
   }
 
@@ -101,6 +150,7 @@ function App() {
       updatedMatchTeams[selectedMatch] = updatedTeams
       setMatchTeams(updatedMatchTeams)
       setNewPlayerName('')
+      if (isAdminAuthenticated) { setSaveStatus('saving'); debouncedSave() }
     }
   }
 
@@ -122,6 +172,7 @@ function App() {
       updatedMatchTeams[selectedMatch] = updatedTeams
       setMatchTeams(updatedMatchTeams)
       setPlayerStats({ kills: '', deaths: '', assists: '' })
+      if (isAdminAuthenticated) { setSaveStatus('saving'); debouncedSave() }
     }
   }
 
@@ -142,6 +193,7 @@ function App() {
     }
     setMatchResults(updatedResults)
     setConfirmModal({ open: false, round: null, winnerIndex: null, teamName: '' })
+    if (isAdminAuthenticated) { setSaveStatus('saving'); debouncedSave() }
   }
 
   const openConfirmModal = (round, winnerIndex, teamName) => {
@@ -164,6 +216,7 @@ function App() {
       aram: { team1: 0, team2: 1, winner: null },
       summonersRift: { team1: 0, team2: 1, winner: null }
     })
+    if (isAdminAuthenticated) debouncedSave()
   }
 
   const handleChooseRules = () => {
@@ -211,72 +264,76 @@ function App() {
   }
 
   useEffect(() => {
-    const fetchInitial = async () => {
-      try {
-        const [rulesRes, dataRes] = await Promise.all([
-          fetch('/api/tournament/rules'),
-          fetch('/api/tournament/data')
-        ])
+    if (!swrData) return
 
-        if (rulesRes.ok) {
-          const rulesData = await rulesRes.json()
-          setRules(rulesData)
-        }
-
-        if (dataRes.ok) {
-          const state = await dataRes.json()
-          if (state.matchTeams) setMatchTeams(state.matchTeams)
-          if (state.matchResults) setMatchResults(state.matchResults)
-        }
-      } catch (error) {
-        console.error('Error fetching initial data:', error)
-      }
+    if (!initialDataLoaded) {
+      if (swrData.rules) setRules(swrData.rules)
+      if (swrData.match_teams) setMatchTeams(swrData.match_teams)
+      if (swrData.match_results) setMatchResults(swrData.match_results)
+      setInitialDataLoaded(true)
+      return
     }
 
-    fetchInitial()
-  }, [])
+    if (mode !== 'admin') {
+      if (swrData.rules) setRules(swrData.rules)
+      if (swrData.match_teams) setMatchTeams(swrData.match_teams)
+      if (swrData.match_results) setMatchResults(swrData.match_results)
+    }
+  }, [swrData, mode, initialDataLoaded])
+
+  const saveToSupabase = async (payload) => {
+    if (!supabaseConfigured) {
+      alert('Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
+      return false
+    }
+
+    const { error } = await supabase
+      .from('tournament_state')
+      .upsert({ id: 1, ...payload }, { onConflict: 'id' })
+
+    if (error) {
+      console.error('Supabase save error:', error)
+      return false
+    }
+
+    return true
+  }
 
   const saveRules = async () => {
     try {
-      const response = await fetch('/api/tournament/rules', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          format: '5v5 | Best of 3 (Bo3) for both Summoner\'s Rift (SR) and ARAM.',
-          selection: 'Streamer spins a wheel of all 10 players before game day. First 5 = Team A; last 5 = Team B.',
-          lockIn: 'No choosing teammates. Teams are locked once drawn.',
-          championRules: 'Summoner\'s Rift: Normal draft rules. Pick any available champion. ARAM Mayhem: Play the assigned champion. No dodging. Rerolls allowed only if mutually agreed beforehand.',
-          attendance: 'All 10 players must confirm readiness before starting. 15 Mins Late: Official warning. 20 Mins Late: Possible replacement or team forfeit.',
-          pauses: 'Allowed briefly for DC/tech issues only. Abuse is banned. Organizer decides final action if a player can\'t return. Remake YES: Serious tech issues, early DCs, or Organizer approval. Remake NO: Bad starts, failed invades, or unlucky ARAM rolls.',
-          conduct: 'Zero tolerance for rage-quitting, griefing, intentional feeding, or personal attacks. Friendly banter is okay. Streamer decisions are absolute. Have fun! Embrace the random chaos and laughs.'
-        })
-      })
-      if (response.ok) {
-        console.log('Rules saved to MongoDB')
+      setSaveStatus('saving')
+      const saved = await saveToSupabase({ rules: DEFAULT_RULES })
+      if (saved) {
+        setRules(DEFAULT_RULES)
+        setSaveStatus('saved')
+        setTimeout(() => setSaveStatus('idle'), 2000)
       } else {
-        console.error('Failed to save rules')
+        setSaveStatus('error')
       }
     } catch (error) {
       console.error('Error saving rules:', error)
+      setSaveStatus('error')
     }
   }
 
   const saveTournament = async () => {
     try {
-      const response = await fetch('/api/tournament/data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ matchTeams, matchResults })
-      })
-      if (response.ok) {
-        console.log('Tournament saved to MongoDB')
+      setSaveStatus('saving')
+      const saved = await saveToSupabase({ match_teams: matchTeams, match_results: matchResults })
+      if (saved) {
+        console.log('Tournament saved to Supabase')
+        setSaveStatus('saved')
+        setTimeout(() => setSaveStatus('idle'), 2000)
       } else {
-        console.error('Failed to save tournament')
+        setSaveStatus('error')
       }
     } catch (error) {
       console.error('Error saving tournament:', error)
+      setSaveStatus('error')
     }
   }
+
+  const debouncedSave = debounce(() => saveTournament(), 800)
 
   const TeamCard = ({ team, index }) => {
     const totalKills = team.players.reduce((sum, player) => sum + player.kills, 0)
@@ -501,6 +558,11 @@ function App() {
 
             {mode === 'admin' && (
               <div className="admin-controls">
+                  <div className="save-indicator" style={{marginBottom: '8px'}}>
+                    {saveStatus === 'saving' && <span style={{color:'#2563eb'}}>Saving...</span>}
+                    {saveStatus === 'saved' && <span style={{color:'#059669'}}>Saved</span>}
+                    {saveStatus === 'error' && <span style={{color:'#dc2626'}}>Save failed</span>}
+                  </div>
                 <div className="control-section">
                   <h3>Edit Team Names</h3>
                   <select value={selectedTeam} onChange={(e) => setSelectedTeam(parseInt(e.target.value))}>

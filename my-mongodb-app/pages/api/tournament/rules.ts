@@ -6,6 +6,14 @@ export default async function handler(
   res: NextApiResponse
 ) {
   try {
+    // CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end()
+    }
     const database = client.db('tournament');
     const collection = database.collection('rules');
 

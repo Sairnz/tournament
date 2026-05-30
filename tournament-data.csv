@@ -1,0 +1,11 @@
+team_id,team_name,wins,player_id,player_name,kills,deaths,assists,match_round,winner_id,created_at
+1,Team 1,0,1,Player 1,0,0,0,aram,,2026-05-31 12:00:00
+1,Team 1,0,2,Player 2,0,0,0,aram,,2026-05-31 12:00:00
+1,Team 1,0,3,Player 3,0,0,0,aram,,2026-05-31 12:00:00
+2,Team 2,0,6,Player 1,0,0,0,aram,,2026-05-31 12:00:00
+2,Team 2,0,7,Player 2,0,0,0,aram,,2026-05-31 12:00:00
+2,Team 2,0,8,Player 3,0,0,0,aram,,2026-05-31 12:00:00
+1,Team 1,0,1,Player 1,0,0,0,summonersRift,,2026-05-31 12:00:00
+1,Team 1,0,2,Player 2,0,0,0,summonersRift,,2026-05-31 12:00:00
+2,Team 2,0,6,Player 1,0,0,0,summonersRift,,2026-05-31 12:00:00
+2,Team 2,0,7,Player 2,0,0,0,summonersRift,,2026-05-31 12:00:00
