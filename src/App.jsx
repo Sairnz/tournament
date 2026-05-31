@@ -18,32 +18,60 @@ function App() {
   const [adminPassword, setAdminPassword] = useState('')
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
 
+  const createPlayerStatsHistory = () => (
+    Array.from({ length: 3 }, () => ({ kills: 0, deaths: 0, assists: 0 }))
+  )
+
+  const createPlayer = (id, name) => ({
+    id,
+    name,
+    statsHistory: createPlayerStatsHistory()
+  })
+
   const initialMatchTeams = [
     {
       id: 1,
       name: 'Team 1',
       wins: 0,
-      players: Array(5).fill().map((_, i) => ({
-        id: i + 1,
-        name: `Player ${i + 1}`,
-        kills: 0,
-        deaths: 0,
-        assists: 0
-      }))
+      players: Array.from({ length: 5 }, (_, i) => createPlayer(i + 1, `Player ${i + 1}`))
     },
     {
       id: 2,
       name: 'Team 2',
       wins: 0,
-      players: Array(5).fill().map((_, i) => ({
-        id: i + 1,
-        name: `Player ${i + 1}`,
-        kills: 0,
-        deaths: 0,
-        assists: 0
-      }))
+      players: Array.from({ length: 5 }, (_, i) => createPlayer(i + 1, `Player ${i + 1}`))
     }
   ]
+
+  const normalizeMatchTeams = (teamsData) => {
+    if (!teamsData) return teamsData
+
+    const normalizePlayer = (player) => {
+      const statsHistory = player.statsHistory ?? [
+        {
+          kills: player.kills || 0,
+          deaths: player.deaths || 0,
+          assists: player.assists || 0
+        },
+        { kills: 0, deaths: 0, assists: 0 },
+        { kills: 0, deaths: 0, assists: 0 }
+      ]
+      return {
+        ...player,
+        statsHistory
+      }
+    }
+
+    const normalizeTeam = (team) => ({
+      ...team,
+      players: team.players?.map(normalizePlayer) ?? []
+    })
+
+    return {
+      aram: teamsData.aram?.map(normalizeTeam) ?? [],
+      summonersRift: teamsData.summonersRift?.map(normalizeTeam) ?? []
+    }
+  }
 
   const [matchTeams, setMatchTeams] = useState({
     aram: initialMatchTeams,
@@ -53,6 +81,7 @@ function App() {
     }))
   })
   const [selectedMatch, setSelectedMatch] = useState('aram')
+  const [selectedGame, setSelectedGame] = useState(0)
   const currentTeams = matchTeams[selectedMatch]
 
   const [selectedTeam, setSelectedTeam] = useState(0)
@@ -65,15 +94,16 @@ function App() {
   useEffect(() => {
     const selectedPlayerData = currentTeams?.[selectedTeam]?.players?.[selectedPlayer]
     if (selectedPlayerData) {
+      const selectedStats = selectedPlayerData.statsHistory?.[selectedGame] ?? { kills: 0, deaths: 0, assists: 0 }
       setPlayerStats({
-        kills: String(selectedPlayerData.kills),
-        deaths: String(selectedPlayerData.deaths),
-        assists: String(selectedPlayerData.assists)
+        kills: String(selectedStats.kills),
+        deaths: String(selectedStats.deaths),
+        assists: String(selectedStats.assists)
       })
     } else {
       setPlayerStats({ kills: '', deaths: '', assists: '' })
     }
-  }, [currentTeams, selectedTeam, selectedPlayer])
+  }, [currentTeams, selectedTeam, selectedPlayer, selectedGame])
 
   const [matchResults, setMatchResults] = useState({
     aram: { team1: 0, team2: 1, winner: null },
@@ -178,11 +208,17 @@ function App() {
       const updatedMatchTeams = { ...matchTeams }
       const updatedTeams = [...updatedMatchTeams[selectedMatch]]
       const updatedPlayers = [...updatedTeams[selectedTeam].players]
+      const currentHistory = [...(updatedPlayers[selectedPlayer].statsHistory || createPlayerStatsHistory())]
+      const updatedStats = {
+        ...currentHistory[selectedGame],
+        kills: playerStats.kills === '' ? currentHistory[selectedGame].kills : parseInt(playerStats.kills, 10) || 0,
+        deaths: playerStats.deaths === '' ? currentHistory[selectedGame].deaths : parseInt(playerStats.deaths, 10) || 0,
+        assists: playerStats.assists === '' ? currentHistory[selectedGame].assists : parseInt(playerStats.assists, 10) || 0
+      }
+      currentHistory[selectedGame] = updatedStats
       updatedPlayers[selectedPlayer] = {
         ...currentPlayer,
-        kills: playerStats.kills === '' ? currentPlayer.kills : parseInt(playerStats.kills, 10) || 0,
-        deaths: playerStats.deaths === '' ? currentPlayer.deaths : parseInt(playerStats.deaths, 10) || 0,
-        assists: playerStats.assists === '' ? currentPlayer.assists : parseInt(playerStats.assists, 10) || 0
+        statsHistory: currentHistory
       }
       updatedTeams[selectedTeam] = {
         ...updatedTeams[selectedTeam],
@@ -191,9 +227,9 @@ function App() {
       updatedMatchTeams[selectedMatch] = updatedTeams
       setMatchTeams(updatedMatchTeams)
       setPlayerStats({
-        kills: String(updatedPlayers[selectedPlayer].kills),
-        deaths: String(updatedPlayers[selectedPlayer].deaths),
-        assists: String(updatedPlayers[selectedPlayer].assists)
+        kills: String(updatedStats.kills),
+        deaths: String(updatedStats.deaths),
+        assists: String(updatedStats.assists)
       })
       if (isAdminAuthenticated) {
         setSaveStatus('saving')
@@ -302,7 +338,7 @@ function App() {
 
     if (!initialDataLoaded) {
       if (swrData.rules) setRules(swrData.rules)
-      if (swrData.match_teams) setMatchTeams(swrData.match_teams)
+      if (swrData.match_teams) setMatchTeams(normalizeMatchTeams(swrData.match_teams))
       if (swrData.match_results) setMatchResults(swrData.match_results)
       setInitialDataLoaded(true)
       return
@@ -310,7 +346,7 @@ function App() {
 
     if (mode !== 'admin') {
       if (swrData.rules) setRules(swrData.rules)
-      if (swrData.match_teams) setMatchTeams(swrData.match_teams)
+      if (swrData.match_teams) setMatchTeams(normalizeMatchTeams(swrData.match_teams))
       if (swrData.match_results) setMatchResults(swrData.match_results)
     }
   }, [swrData, mode, initialDataLoaded])
@@ -328,7 +364,7 @@ function App() {
           console.debug('realtime payload', payload)
           const row = payload.new ?? payload.record ?? null
           if (!row) return
-          if (row.match_teams) setMatchTeams(row.match_teams)
+          if (row.match_teams) setMatchTeams(normalizeMatchTeams(row.match_teams))
           if (row.match_results) setMatchResults(row.match_results)
           if (row.rules) setRules(row.rules)
         }
@@ -424,8 +460,11 @@ function App() {
     }
   }, [matchTeams, matchResults, mutate, swrData])
 
-  const TeamCard = ({ team, index }) => {
-    const totalKills = team.players.reduce((sum, player) => sum + player.kills, 0)
+  const TeamCard = ({ team, index, selectedGame }) => {
+    const totalKills = team.players.reduce(
+      (sum, player) => sum + ((player.statsHistory?.[selectedGame]?.kills) || 0),
+      0
+    )
 
     return (
       <div className="team-card">
@@ -437,18 +476,33 @@ function App() {
           <span className="wins-badge">Wins: {team.wins}</span>
         </div>
         <div className="players-list">
-          {team.players.map((player, playerIndex) => (
-            <div key={player.id} className="player-row">
-              <span className="player-name">{player.name}</span>
-              <div className="kda-stats">
-                <span className="stat">{player.kills}</span>
-                <span className="stat-slash">/</span>
-                <span className="stat">{player.deaths}</span>
-                <span className="stat-slash">/</span>
-                <span className="stat">{player.assists}</span>
+          {team.players.map((player, playerIndex) => {
+            const stats = player.statsHistory?.[selectedGame] ?? { kills: 0, deaths: 0, assists: 0 }
+            return (
+              <div key={player.id} className="player-row">
+                <div>
+                  <span className="player-name">{player.name}</span>
+                  <div className="player-history">
+                    {player.statsHistory?.map((history, gameIndex) => (
+                      <span
+                        key={gameIndex}
+                        className={gameIndex === selectedGame ? 'history-current' : 'history-item'}
+                      >
+                        G{gameIndex + 1}: {history.kills}/{history.deaths}/{history.assists}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="kda-stats">
+                  <span className="stat">{stats.kills}</span>
+                  <span className="stat-slash">/</span>
+                  <span className="stat">{stats.deaths}</span>
+                  <span className="stat-slash">/</span>
+                  <span className="stat">{stats.assists}</span>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     )
@@ -612,11 +666,24 @@ function App() {
           </div>
 
           <div className="tournament-content">
+            <div className="game-toggle-bar">
+              {[0, 1, 2].map((gameIndex) => (
+                <button
+                  key={gameIndex}
+                  className={`secondary-btn landing-return ${selectedGame === gameIndex ? 'active' : ''}`}
+                  onClick={() => setSelectedGame(gameIndex)}
+                >
+                  Game {gameIndex + 1}
+                </button>
+              ))}
+            </div>
             <div className="teams-section">
-              <h2>{selectedMatch === 'aram' ? 'ARAM Teams & Players' : "Summoner's Rift Teams & Players"}</h2>
+              <h2>
+                {selectedMatch === 'aram' ? 'ARAM Teams & Players' : "Summoner's Rift Teams & Players"} - Game {selectedGame + 1}
+              </h2>
               <div className="teams-grid">
                 {currentTeams.map((team, index) => (
-                  <TeamCard key={team.id} team={team} index={index} />
+                  <TeamCard key={team.id} team={team} index={index} selectedGame={selectedGame} />
                 ))}
               </div>
             </div>
