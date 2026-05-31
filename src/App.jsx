@@ -17,6 +17,7 @@ const DEFAULT_RULES = {
 function App() {
   const [mode, setMode] = useState('landing')
   const [adminPassword, setAdminPassword] = useState('')
+  const [adminError, setAdminError] = useState('')
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
 
   const createPlayerStatsHistory = () => (
@@ -329,8 +330,9 @@ function App() {
       setIsAdminAuthenticated(true)
       setMode('admin')
       setAdminPassword('')
+      setAdminError('')
     } else {
-      alert('Incorrect password!')
+      setAdminError('Incorrect password. Please try again.')
       setAdminPassword('')
     }
   }
@@ -656,10 +658,14 @@ function App() {
                 type="password"
                 placeholder="Admin password"
                 value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
+                onChange={(e) => {
+                  setAdminPassword(e.target.value)
+                  if (adminError) setAdminError('')
+                }}
               />
               <button onClick={handleAdminLogin}>Login</button>
             </div>
+            {adminError && <div className="form-error">{adminError}</div>}
             <button className="secondary-btn" onClick={handleBackToSelection}>Back to selection</button>
           </div>
         </div>
