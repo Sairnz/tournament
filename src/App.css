@@ -623,7 +623,7 @@ select:focus {
 
 .landing-card {
   width: 100%;
-  max-width: 540px;
+  max-width: 760px;
   padding: 40px;
   text-align: center;
   background: rgba(255, 255, 255, 0.96);
@@ -658,7 +658,7 @@ select:focus {
 }
 
 .rules-card {
-  max-width: 990px;
+  max-width: 980px;
 }
 
 .rules-section {
@@ -726,6 +726,7 @@ select:focus {
   }
 
   .landing-card {
+    max-width: 100%;
     padding: 28px 20px;
   }
 
