@@ -588,6 +588,21 @@ select:focus {
   box-shadow: 0 24px 55px rgba(255, 105, 180, 0.16);
 }
 
+.landing-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.landing-icon {
+  width: 52px;
+  height: auto;
+  flex-shrink: 0;
+}
+
 .auth-card {
   max-width: 460px;
 }
@@ -658,6 +673,18 @@ select:focus {
 @media (max-width: 768px) {
   .header h1 {
     font-size: 2.1em;
+  }
+
+  .landing-card {
+    padding: 28px 20px;
+  }
+
+  .landing-card h1 {
+    font-size: 2.15em;
+  }
+
+  .landing-icon {
+    width: 42px;
   }
 
   .bracket-container {

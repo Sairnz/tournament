@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import useSWR from 'swr'
 import { supabase } from './lib/supabaseClient'
+import tournamentIcon from '../6112.png'
 import './App.css'
 
 const DEFAULT_RULES = {
@@ -115,7 +116,7 @@ function App() {
   const [saveErrorMsg, setSaveErrorMsg] = useState('')
   const [initialDataLoaded, setInitialDataLoaded] = useState(false)
 
-  const ADMIN_PASSWORD = 'admin123'
+  const ADMIN_PASSWORD = 'nootnoot02'
   const supabaseConfigured = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY)
 
   const fetchTournamentState = async () => {
@@ -581,7 +582,10 @@ function App() {
       {mode === 'landing' && (
         <div className="landing-page">
           <div className="landing-card">
-            <h1>Welcome to chillpinguuu's Mini Tournament</h1>
+            <div className="landing-title">
+              <img src={tournamentIcon} alt="Mini Tournament logo" className="landing-icon" />
+              <h1>Welcome to chilguins Mini Tournament</h1>
+            </div>
             <p>Choose to continue.</p>
             <div className="landing-actions">
               <button className="mode-btn" onClick={handleChooseRules}>Tournament Rules</button>
