@@ -600,7 +600,7 @@ function App() {
 
       {mode === 'rules' && (
         <div className="landing-page">
-          <div className="landing-card auth-card rules-card">
+          <div className="landing-card rules-card">
             <h1>Tournament Rules</h1>
             <div className="rules-section">
               <h2>Teams & Format</h2>
