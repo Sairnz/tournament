@@ -81,6 +81,7 @@ function App() {
     }))
   })
   const [selectedMatch, setSelectedMatch] = useState('aram')
+  const [statsMode, setStatsMode] = useState('single')
   const [selectedGame, setSelectedGame] = useState(0)
   const currentTeams = matchTeams[selectedMatch]
 
@@ -460,10 +461,28 @@ function App() {
     }
   }, [matchTeams, matchResults, mutate, swrData])
 
-  const TeamCard = ({ team, index, selectedGame }) => {
-    const totalKills = team.players.reduce(
-      (sum, player) => sum + ((player.statsHistory?.[selectedGame]?.kills) || 0),
-      0
+  const TeamCard = ({ team, index, selectedGame, statsMode }) => {
+    const totalStats = team.players.reduce(
+      (sum, player) => {
+        const statsList = player.statsHistory ?? []
+        if (statsMode === 'all') {
+          return statsList.reduce(
+            (innerSum, stats) => ({
+              kills: innerSum.kills + (stats.kills || 0),
+              deaths: innerSum.deaths + (stats.deaths || 0),
+              assists: innerSum.assists + (stats.assists || 0)
+            }),
+            sum
+          )
+        }
+        const selectedStats = statsList[selectedGame] ?? { kills: 0, deaths: 0, assists: 0 }
+        return {
+          kills: sum.kills + selectedStats.kills,
+          deaths: sum.deaths + selectedStats.deaths,
+          assists: sum.assists + selectedStats.assists
+        }
+      },
+      { kills: 0, deaths: 0, assists: 0 }
     )
 
     return (
@@ -471,34 +490,44 @@ function App() {
         <div className="team-header">
           <div>
             <h3>{team.name}</h3>
-            <div className="team-subtitle">Total Kills: {totalKills}</div>
+            <div className="team-subtitle">Total Kills: {totalStats.kills}</div>
           </div>
           <span className="wins-badge">Wins: {team.wins}</span>
         </div>
         <div className="players-list">
-          {team.players.map((player, playerIndex) => {
-            const stats = player.statsHistory?.[selectedGame] ?? { kills: 0, deaths: 0, assists: 0 }
+          {team.players.map((player) => {
+            const statsList = player.statsHistory ?? []
+            const selectedStats = statsMode === 'all'
+              ? statsList.reduce(
+                  (sum, stats) => ({
+                    kills: sum.kills + (stats.kills || 0),
+                    deaths: sum.deaths + (stats.deaths || 0),
+                    assists: sum.assists + (stats.assists || 0)
+                  }),
+                  { kills: 0, deaths: 0, assists: 0 }
+                )
+              : statsList[selectedGame] ?? { kills: 0, deaths: 0, assists: 0 }
+
             return (
               <div key={player.id} className="player-row">
                 <div>
                   <span className="player-name">{player.name}</span>
-                  <div className="player-history">
-                    {player.statsHistory?.map((history, gameIndex) => (
-                      <span
-                        key={gameIndex}
-                        className={gameIndex === selectedGame ? 'history-current' : 'history-item'}
-                      >
-                        G{gameIndex + 1}: {history.kills}/{history.deaths}/{history.assists}
-                      </span>
-                    ))}
-                  </div>
+                  {statsMode === 'all' && (
+                    <div className="player-history">
+                      {statsList.map((history, gameIndex) => (
+                        <span key={gameIndex} className="history-item">
+                          G{gameIndex + 1}: {history.kills}/{history.deaths}/{history.assists}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="kda-stats">
-                  <span className="stat">{stats.kills}</span>
+                  <span className="stat">{selectedStats.kills}</span>
                   <span className="stat-slash">/</span>
-                  <span className="stat">{stats.deaths}</span>
+                  <span className="stat">{selectedStats.deaths}</span>
                   <span className="stat-slash">/</span>
-                  <span className="stat">{stats.assists}</span>
+                  <span className="stat">{selectedStats.assists}</span>
                 </div>
               </div>
             )
@@ -643,16 +672,40 @@ function App() {
             </p>
             <div className="header-actions">
               <button
-                className={`secondary-btn landing-return ${selectedMatch === 'aram' ? 'active' : ''}`}
-                onClick={() => setSelectedMatch('aram')}
+                className={`secondary-btn landing-return ${selectedMatch === 'aram' && statsMode === 'single' ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedMatch('aram')
+                  setStatsMode('single')
+                }}
               >
                 ARAM Match
               </button>
               <button
-                className={`secondary-btn landing-return ${selectedMatch === 'summonersRift' ? 'active' : ''}`}
-                onClick={() => setSelectedMatch('summonersRift')}
+                className={`secondary-btn landing-return ${selectedMatch === 'summonersRift' && statsMode === 'single' ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedMatch('summonersRift')
+                  setStatsMode('single')
+                }}
               >
                 Summoner's Rift Match
+              </button>
+              <button
+                className={`secondary-btn landing-return ${selectedMatch === 'aram' && statsMode === 'all' ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedMatch('aram')
+                  setStatsMode('all')
+                }}
+              >
+                All ARAM Stats
+              </button>
+              <button
+                className={`secondary-btn landing-return ${selectedMatch === 'summonersRift' && statsMode === 'all' ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedMatch('summonersRift')
+                  setStatsMode('all')
+                }}
+              >
+                All Summoners Stats
               </button>
               <button className="secondary-btn landing-return" onClick={handleBackToSelection}>
                 Exit
@@ -667,23 +720,28 @@ function App() {
 
           <div className="tournament-content">
             <div className="game-toggle-bar">
-              {[0, 1, 2].map((gameIndex) => (
-                <button
-                  key={gameIndex}
-                  className={`secondary-btn landing-return ${selectedGame === gameIndex ? 'active' : ''}`}
-                  onClick={() => setSelectedGame(gameIndex)}
-                >
-                  Game {gameIndex + 1}
-                </button>
-              ))}
+              {statsMode === 'single' ? (
+                [0, 1, 2].map((gameIndex) => (
+                  <button
+                    key={gameIndex}
+                    className={`secondary-btn landing-return ${selectedGame === gameIndex ? 'active' : ''}`}
+                    onClick={() => setSelectedGame(gameIndex)}
+                  >
+                    Game {gameIndex + 1}
+                  </button>
+                ))
+              ) : (
+                <span className="all-game-label">All Games</span>
+              )}
             </div>
             <div className="teams-section">
               <h2>
-                {selectedMatch === 'aram' ? 'ARAM Teams & Players' : "Summoner's Rift Teams & Players"} - Game {selectedGame + 1}
+                {selectedMatch === 'aram' ? 'ARAM Teams & Players' : "Summoner's Rift Teams & Players"}
+                {statsMode === 'single' ? ` - Game ${selectedGame + 1}` : ' - All Games'}
               </h2>
               <div className="teams-grid">
                 {currentTeams.map((team, index) => (
-                  <TeamCard key={team.id} team={team} index={index} selectedGame={selectedGame} />
+                  <TeamCard key={team.id} team={team} index={index} selectedGame={selectedGame} statsMode={statsMode} />
                 ))}
               </div>
             </div>
