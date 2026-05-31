@@ -61,6 +61,20 @@ function App() {
   const [newPlayerName, setNewPlayerName] = useState('')
   const [selectedPlayer, setSelectedPlayer] = useState(0)
   const [playerStats, setPlayerStats] = useState({ kills: '', deaths: '', assists: '' })
+
+  useEffect(() => {
+    const selectedPlayerData = currentTeams?.[selectedTeam]?.players?.[selectedPlayer]
+    if (selectedPlayerData) {
+      setPlayerStats({
+        kills: String(selectedPlayerData.kills),
+        deaths: String(selectedPlayerData.deaths),
+        assists: String(selectedPlayerData.assists)
+      })
+    } else {
+      setPlayerStats({ kills: '', deaths: '', assists: '' })
+    }
+  }, [currentTeams, selectedTeam, selectedPlayer])
+
   const [matchResults, setMatchResults] = useState({
     aram: { team1: 0, team2: 1, winner: null },
     summonersRift: { team1: 0, team2: 1, winner: null }
@@ -158,14 +172,17 @@ function App() {
 
   const updatePlayerStats = () => {
     if (selectedTeam >= 0 && selectedPlayer >= 0) {
+      const currentPlayer = currentTeams?.[selectedTeam]?.players?.[selectedPlayer]
+      if (!currentPlayer) return
+
       const updatedMatchTeams = { ...matchTeams }
       const updatedTeams = [...updatedMatchTeams[selectedMatch]]
       const updatedPlayers = [...updatedTeams[selectedTeam].players]
       updatedPlayers[selectedPlayer] = {
-        ...updatedPlayers[selectedPlayer],
-        kills: parseInt(playerStats.kills) || 0,
-        deaths: parseInt(playerStats.deaths) || 0,
-        assists: parseInt(playerStats.assists) || 0
+        ...currentPlayer,
+        kills: playerStats.kills === '' ? currentPlayer.kills : parseInt(playerStats.kills, 10) || 0,
+        deaths: playerStats.deaths === '' ? currentPlayer.deaths : parseInt(playerStats.deaths, 10) || 0,
+        assists: playerStats.assists === '' ? currentPlayer.assists : parseInt(playerStats.assists, 10) || 0
       }
       updatedTeams[selectedTeam] = {
         ...updatedTeams[selectedTeam],
@@ -173,7 +190,11 @@ function App() {
       }
       updatedMatchTeams[selectedMatch] = updatedTeams
       setMatchTeams(updatedMatchTeams)
-      setPlayerStats({ kills: '', deaths: '', assists: '' })
+      setPlayerStats({
+        kills: String(updatedPlayers[selectedPlayer].kills),
+        deaths: String(updatedPlayers[selectedPlayer].deaths),
+        assists: String(updatedPlayers[selectedPlayer].assists)
+      })
       if (isAdminAuthenticated) {
         setSaveStatus('saving')
         saveTournament(updatedMatchTeams, matchResults)
