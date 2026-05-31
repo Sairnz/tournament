@@ -73,14 +73,6 @@ function App() {
   const ADMIN_PASSWORD = 'admin123'
   const supabaseConfigured = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY)
 
-  function debounce(fn, wait = 800) {
-    let timer
-    return (...args) => {
-      clearTimeout(timer)
-      timer = setTimeout(() => fn(...args), wait)
-    }
-  }
-
   const fetchTournamentState = async () => {
     if (!supabaseConfigured) {
       throw new Error('Supabase is not configured')
@@ -116,7 +108,10 @@ function App() {
       updatedMatchTeams[selectedMatch] = updatedTeams
       setMatchTeams(updatedMatchTeams)
       setNewTeamName('')
-      if (isAdminAuthenticated) { setSaveStatus('saving'); debouncedSave() }
+      if (isAdminAuthenticated) {
+        setSaveStatus('saving')
+        saveTournament(updatedMatchTeams, matchResults)
+      }
     }
   }
 
@@ -131,7 +126,10 @@ function App() {
       updatedMatchTeams[selectedMatch] = updatedTeams
       setMatchTeams(updatedMatchTeams)
       setNewTeamWins('')
-      if (isAdminAuthenticated) { setSaveStatus('saving'); debouncedSave() }
+      if (isAdminAuthenticated) {
+        setSaveStatus('saving')
+        saveTournament(updatedMatchTeams, matchResults)
+      }
     }
   }
 
@@ -151,7 +149,10 @@ function App() {
       updatedMatchTeams[selectedMatch] = updatedTeams
       setMatchTeams(updatedMatchTeams)
       setNewPlayerName('')
-      if (isAdminAuthenticated) { setSaveStatus('saving'); debouncedSave() }
+      if (isAdminAuthenticated) {
+        setSaveStatus('saving')
+        saveTournament(updatedMatchTeams, matchResults)
+      }
     }
   }
 
@@ -173,7 +174,10 @@ function App() {
       updatedMatchTeams[selectedMatch] = updatedTeams
       setMatchTeams(updatedMatchTeams)
       setPlayerStats({ kills: '', deaths: '', assists: '' })
-      if (isAdminAuthenticated) { setSaveStatus('saving'); debouncedSave() }
+      if (isAdminAuthenticated) {
+        setSaveStatus('saving')
+        saveTournament(updatedMatchTeams, matchResults)
+      }
     }
   }
 
@@ -194,7 +198,10 @@ function App() {
     }
     setMatchResults(updatedResults)
     setConfirmModal({ open: false, round: null, winnerIndex: null, teamName: '' })
-    if (isAdminAuthenticated) { setSaveStatus('saving'); debouncedSave() }
+    if (isAdminAuthenticated) {
+      setSaveStatus('saving')
+      saveTournament(matchTeams, updatedResults)
+    }
   }
 
   const openConfirmModal = (round, winnerIndex, teamName) => {
@@ -206,18 +213,23 @@ function App() {
   }
 
   const resetTournament = () => {
-    setMatchTeams({
+    const resetMatchTeams = {
       aram: initialMatchTeams,
       summonersRift: initialMatchTeams.map(team => ({
         ...team,
         players: team.players.map(player => ({ ...player }))
       }))
-    })
-    setMatchResults({
+    }
+    const resetMatchResults = {
       aram: { team1: 0, team2: 1, winner: null },
       summonersRift: { team1: 0, team2: 1, winner: null }
-    })
-    if (isAdminAuthenticated) debouncedSave()
+    }
+    setMatchTeams(resetMatchTeams)
+    setMatchResults(resetMatchResults)
+    if (isAdminAuthenticated) {
+      setSaveStatus('saving')
+      saveTournament(resetMatchTeams, resetMatchResults)
+    }
   }
 
   const handleChooseRules = () => {
@@ -360,18 +372,21 @@ function App() {
     }
   }, [mutate, swrData])
 
-  const saveTournament = useCallback(async () => {
+  const saveTournament = useCallback(async (payloadMatchTeams = matchTeams, payloadMatchResults = matchResults) => {
     try {
       setSaveStatus('saving')
-      const result = await saveToSupabase({ match_teams: matchTeams, match_results: matchResults })
+      const result = await saveToSupabase({ match_teams: payloadMatchTeams, match_results: payloadMatchResults })
       if (result?.success) {
         console.log('Tournament saved to Supabase')
         setSaveStatus('saved')
         setSaveErrorMsg('')
         if (mutate) {
-          // use returned data from Supabase if available to avoid stale revalidation
           mutate(
-            { ...swrData, match_teams: result.data?.match_teams ?? matchTeams, match_results: result.data?.match_results ?? matchResults },
+            {
+              ...swrData,
+              match_teams: result.data?.match_teams ?? payloadMatchTeams,
+              match_results: result.data?.match_results ?? payloadMatchResults
+            },
             false
           )
         }
@@ -387,8 +402,6 @@ function App() {
       try { setSaveErrorMsg(error.message || JSON.stringify(error)) } catch (e) { /* ignore */ }
     }
   }, [matchTeams, matchResults, mutate, swrData])
-
-  const debouncedSave = useMemo(() => debounce(saveTournament, 800), [saveTournament])
 
   const TeamCard = ({ team, index }) => {
     const totalKills = team.players.reduce((sum, player) => sum + player.kills, 0)
